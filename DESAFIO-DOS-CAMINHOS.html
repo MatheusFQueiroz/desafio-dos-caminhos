@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desafio dos Caminhos</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body { font-family: "Trebuchet MS", Verdana, sans-serif; color: #2A3081;
+         background: #F4F5FB; display: flex; flex-direction: column; }
+  header { background: #2A3081; color: #fff; padding: 10px 18px; display: flex;
+           align-items: center; gap: 14px; flex-shrink: 0; flex-wrap: wrap; }
+  header h1 { font-size: 19px; white-space: nowrap; }
+  .chip { font-size: 19px; font-weight: bold; border-radius: 10px;
+          padding: 7px 16px; white-space: nowrap; }
+  #nivelC { background: #fff; color: #2A3081; }
+  #pontosC { background: #FFD900; color: #2A3081; margin-left: auto; }
+  #barra { background: #fff; border-bottom: 3px solid #E3E5F2; padding: 10px 18px;
+           display: flex; align-items: center; gap: 15px; flex-wrap: wrap; flex-shrink: 0; }
+  #missao { font-size: 21px; }
+  #medida { font-size: 21px; font-weight: bold; background: #E3E5F2;
+            border-radius: 10px; padding: 6px 16px; }
+  #trilha { font-size: 17px; font-weight: bold; color: #666; flex: 1; min-width: 130px; }
+  #barra button, #festa button { font: inherit; font-weight: bold; border: none;
+            border-radius: 10px; cursor: pointer; }
+  #barra button { font-size: 16px; padding: 8px 16px; background: #4048A8; color: #fff; }
+  #barra button:hover { filter: brightness(1.15); }
+  #palco { position: relative; flex: 1; overflow: hidden; }
+  svg { width: 100%; height: 100%; display: block; }
+  .aresta { stroke: #C2C7E0; stroke-width: 9; stroke-linecap: round; }
+  .aresta.usada { stroke: #2F9E44; stroke-width: 14; }
+  .pesobg { fill: #fff; stroke: #C2C7E0; stroke-width: 3; }
+  .peso { font-size: 26px; font-weight: bold; fill: #2A3081;
+          text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .no { cursor: pointer; }
+  .no circle { fill: #fff; stroke: #2A3081; stroke-width: 7; }
+  .no:hover circle { stroke: #FFD900; stroke-width: 11; }
+  .no.inicio circle { fill: #FFD900; }
+  .no.fim circle { fill: #74C0FC; }
+  .no.visitado circle { fill: #B2F2BB; }
+  .no.ativo circle { fill: #2F9E44; stroke: #1B6B31; }
+  .no.vizinho circle { stroke: #2F9E44; stroke-dasharray: 9 7; }
+  .no text { font-size: 34px; font-weight: bold; fill: #2A3081;
+             text-anchor: middle; pointer-events: none; }
+  .no.ativo text { fill: #fff; }
+  #aviso { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%);
+           background: #2A3081; color: #fff; font-size: 19px; padding: 12px 24px;
+           border-radius: 12px; display: none; }
+  #festa { position: absolute; inset: 0; display: none; z-index: 10; align-items: center;
+           justify-content: center; flex-direction: column; gap: 16px; padding: 22px;
+           background: rgba(255,255,255,.97); text-align: center; overflow: auto; }
+  #festa .tit { font-size: 40px; font-weight: bold; }
+  #festa .sub { font-size: 21px; line-height: 1.5; max-width: 680px; }
+  #festa .linha { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  #festa button { font-size: 22px; padding: 14px 28px; }
+  .bt1 { background: #2F9E44; color: #fff; }
+  .bt2 { background: #2A3081; color: #fff; }
+  #nome { font: inherit; font-size: 23px; padding: 12px 16px; border: 4px solid #2A3081;
+          border-radius: 10px; width: 360px; max-width: 92%; text-align: center; }
+  table.res { border-collapse: collapse; font-size: 15px; margin: 0 auto; }
+  table.res td, table.res th { border: 2px solid #C2C7E0; padding: 4px 9px; }
+  table.res th { background: #2A3081; color: #fff; font-size: 13px; }
+  .nota { font-size: 64px; font-weight: bold; color: #2F9E44; line-height: 1; }
+  .caixa { border: 5px solid #2A3081; border-radius: 14px; padding: 16px 26px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>DESAFIO DOS CAMINHOS</h1>
+  <div class="chip" id="nivelC">Nível 1 de 20</div>
+  <div class="chip" id="pontosC">0 pontos</div>
+</header>
+
+<div id="barra">
+  <div id="missao">—</div>
+  <div id="medida">—</div>
+  <div id="trilha">—</div>
+  <button id="btVoltar">&#8592; VOLTAR</button>
+  <button id="btLimpar">RECOMEÇAR NÍVEL</button>
+</div>
+
+<div id="palco">
+  <svg id="svg"></svg>
+  <div id="aviso"></div>
+  <div id="festa"></div>
+</div>
+
+<script>
+(function () {
+  var MAPAS = [{"n":1,"tipo":"paradas","nos":{"A":[10,50],"B":[50,14],"C":[50,86],"D":[90,50]},"ar":[["A","B",1],["A","C",1],["B","D",1],["C","D",1]],"ini":"A","fim":"D","otimo":2},{"n":2,"tipo":"paradas","nos":{"A":[10,50],"B":[37,14],"C":[37,86],"D":[63,14],"E":[63,86],"F":[90,50]},"ar":[["A","B",1],["A","C",1],["B","D",1],["C","E",1],["D","F",1],["E","F",1]],"ini":"A","fim":"F","otimo":3},{"n":3,"tipo":"paradas","nos":{"A":[10,50],"B":[37,14],"C":[37,50],"D":[37,86],"E":[63,14],"F":[63,86],"G":[90,50]},"ar":[["A","B",1],["A","C",1],["A","D",1],["B","E",1],["B","F",1],["C","E",1],["C","F",1],["D","F",1],["D","E",1],["E","G",1],["F","G",1],["A","F",1]],"ini":"A","fim":"G","otimo":2},{"n":4,"tipo":"paradas","nos":{"A":[10,50],"B":[37,14],"C":[37,50],"D":[37,86],"E":[63,14],"F":[63,50],"G":[63,86],"H":[90,50]},"ar":[["A","B",1],["A","C",1],["A","D",1],["B","E",1],["B","F",1],["C","F",1],["C","E",1],["D","G",1],["E","H",1],["F","H",1],["G","H",1],["A","G",1]],"ini":"A","fim":"H","otimo":2},{"n":5,"tipo":"paradas","nos":{"A":[10,50],"B":[30,14],"C":[30,50],"D":[30,86],"E":[50,14],"F":[50,50],"G":[50,86],"H":[70,14],"I":[70,86],"J":[90,50]},"ar":[["A","B",1],["A","C",1],["A","D",1],["B","E",1],["C","F",1],["D","G",1],["D","F",1],["E","H",1],["F","H",1],["G","I",1],["H","J",1],["I","J",1],["A","G",1]],"ini":"A","fim":"J","otimo":3},{"n":6,"tipo":"paradas","nos":{"A":[10,50],"B":[30,14],"C":[30,50],"D":[30,86],"E":[50,14],"F":[50,50],"G":[50,86],"H":[70,14],"I":[70,50],"J":[70,86],"K":[90,50]},"ar":[["A","B",1],["A","C",1],["A","D",1],["B","E",1],["C","F",1],["D","G",1],["E","H",1],["F","I",1],["F","H",1],["G","J",1],["G","I",1],["H","K",1],["I","K",1],["J","K",1],["B","H",1],["G","K",1]],"ini":"A","fim":"K","otimo":3},{"n":7,"tipo":"custo","nos":{"A":[10,50],"B":[50,14],"C":[50,86],"D":[90,50]},"ar":[["A","B",6],["A","C",3],["B","D",4],["C","D",6]],"ini":"A","fim":"D","otimo":9},{"n":8,"tipo":"custo","nos":{"A":[10,50],"B":[37,14],"C":[37,86],"D":[63,14],"E":[63,86],"F":[90,50]},"ar":[["A","B",4],["A","C",6],["B","D",7],["C","E",2],["C","D",3],["D","F",8],["E","F",8]],"ini":"A","fim":"F","otimo":16},{"n":9,"tipo":"custo","nos":{"A":[10,50],"B":[37,14],"C":[37,50],"D":[37,86],"E":[63,14],"F":[63,86],"G":[90,50]},"ar":[["A","B",2],["A","C",2],["A","D",5],["B","E",6],["B","F",7],["C","E",2],["D","F",5],["D","E",2],["E","G",5],["F","G",8],["A","E",12]],"ini":"A","fim":"G","otimo":9},{"n":10,"tipo":"custo","nos":{"A":[10,50],"B":[37,14],"C":[37,50],"D":[37,86],"E":[63,14],"F":[63,50],"G":[63,86],"H":[90,50]},"ar":[["A","B",2],["A","C",4],["A","D",6],["B","E",5],["B","F",8],["C","F",9],["C","E",3],["D","G",9],["D","F",6],["E","H",4],["F","H",6],["G","H",4],["A","F",17]],"ini":"A","fim":"H","otimo":11},{"n":11,"tipo":"custo","nos":{"A":[10,50],"B":[37,14],"C":[37,50],"D":[37,86],"E":[63,14],"F":[63,50],"G":[63,86],"H":[90,50]},"ar":[["A","B",7],["A","C",9],["A","D",3],["B","E",7],["B","F",9],["C","F",7],["D","G",2],["E","H",5],["F","H",8],["G","H",6],["A","G",15],["A","E",17]],"ini":"A","fim":"H","otimo":11},{"n":12,"tipo":"custo","nos":{"A":[10,50],"B":[30,14],"C":[30,50],"D":[30,86],"E":[50,14],"F":[50,50],"G":[50,86],"H":[70,14],"I":[70,86],"J":[90,50]},"ar":[["A","B",5],["A","C",2],["A","D",4],["B","E",6],["B","F",3],["C","F",6],["C","E",2],["D","G",2],["D","F",9],["E","H",5],["F","H",5],["G","I",6],["H","J",4],["I","J",2],["A","F",12]],"ini":"A","fim":"J","otimo":13},{"n":13,"tipo":"custo","nos":{"A":[10,50],"B":[30,14],"C":[30,50],"D":[30,86],"E":[50,14],"F":[50,50],"G":[50,86],"H":[70,14],"I":[70,86],"J":[90,50]},"ar":[["A","B",9],["A","C",2],["A","D",8],["B","E",2],["B","F",4],["C","F",9],["C","E",5],["D","G",6],["E","H",7],["F","H",8],["G","I",7],["H","J",8],["I","J",6],["A","E",17],["A","G",13]],"ini":"A","fim":"J","otimo":22},{"n":14,"tipo":"custo","nos":{"A":[10,50],"B":[30,14],"C":[30,50],"D":[30,86],"E":[50,14],"F":[50,50],"G":[50,86],"H":[70,14],"I":[70,50],"J":[70,86],"K":[90,50]},"ar":[["A","B",2],["A","C",8],["A","D",3],["B","E",5],["B","F",8],["C","F",5],["D","G",9],["D","F",5],["E","H",7],["E","I",4],["F","I",2],["F","H",4],["G","J",2],["H","K",9],["I","K",8],["J","K",9],["F","K",13],["A","F",14]],"ini":"A","fim":"K","otimo":18},{"n":15,"tipo":"custo","nos":{"A":[10,50],"B":[30,14],"C":[30,50],"D":[30,86],"E":[50,14],"F":[50,50],"G":[50,86],"H":[70,14],"I":[70,50],"J":[70,86],"K":[90,50]},"ar":[["A","B",4],["A","C",4],["A","D",2],["B","E",9],["C","F",9],["C","E",4],["D","G",5],["D","F",4],["E","H",5],["E","I",2],["F","I",2],["G","J",6],["H","K",8],["I","K",6],["J","K",9],["C","H",12],["E","K",16],["D","H",13]],"ini":"A","fim":"K","otimo":14},{"n":16,"tipo":"custo","nos":{"A":[10,50],"B":[30,14],"C":[30,38],"D":[30,62],"E":[30,86],"F":[50,14],"G":[50,50],"H":[50,86],"I":[70,14],"J":[70,86],"K":[90,50]},"ar":[["A","B",3],["A","C",9],["A","D",6],["A","E",2],["B","F",3],["C","G",5],["C","F",3],["D","G",2],["E","H",7],["E","G",3],["F","I",9],["F","J",4],["G","I",3],["G","J",5],["H","J",5],["H","I",9],["I","K",4],["J","K",8],["A","G",17],["F","K",17]],"ini":"A","fim":"K","otimo":12},{"n":17,"tipo":"custo","nos":{"A":[10,50],"B":[30,14],"C":[30,50],"D":[30,86],"E":[50,14],"F":[50,38],"G":[50,62],"H":[50,86],"I":[70,14],"J":[70,50],"K":[70,86],"L":[90,50]},"ar":[["A","B",5],["A","C",5],["A","D",5],["B","E",4],["B","F",2],["C","G",2],["C","F",9],["D","H",3],["D","G",7],["E","I",5],["F","J",3],["F","I",9],["G","J",4],["H","K",5],["I","L",2],["J","L",4],["K","L",4],["B","K",15],["D","I",15]],"ini":"A","fim":"L","otimo":14},{"n":18,"tipo":"custo","nos":{"A":[10,50],"B":[30,14],"C":[30,38],"D":[30,62],"E":[30,86],"F":[50,14],"G":[50,38],"H":[50,62],"I":[50,86],"J":[70,14],"K":[70,86],"L":[90,50]},"ar":[["A","B",5],["A","C",2],["A","D",7],["A","E",6],["B","F",6],["B","G",9],["C","G",5],["C","F",9],["D","H",9],["D","G",6],["E","I",9],["E","H",4],["F","J",4],["G","J",8],["H","K",6],["I","K",9],["I","J",9],["J","L",5],["K","L",6],["E","K",12],["A","I",16],["D","J",16]],"ini":"A","fim":"L","otimo":20},{"n":19,"tipo":"custo","nos":{"A":[10,50],"B":[30,14],"C":[30,38],"D":[30,62],"E":[30,86],"F":[50,14],"G":[50,50],"H":[50,86],"I":[70,14],"J":[70,50],"K":[70,86],"L":[90,50]},"ar":[["A","B",5],["A","C",4],["A","D",7],["A","E",5],["B","F",2],["B","G",9],["C","G",4],["C","F",3],["D","G",5],["E","H",4],["F","I",2],["F","J",4],["G","J",5],["H","K",2],["H","J",3],["I","L",8],["J","L",4],["K","L",3],["B","J",18],["A","G",18]],"ini":"A","fim":"L","otimo":14},{"n":20,"tipo":"custo","nos":{"A":[10,50],"B":[30,14],"C":[30,50],"D":[30,86],"E":[50,14],"F":[50,38],"G":[50,62],"H":[50,86],"I":[70,14],"J":[70,50],"K":[70,86],"L":[90,50]},"ar":[["A","B",9],["A","C",8],["A","D",8],["B","E",5],["B","F",9],["C","G",4],["D","H",5],["E","I",8],["F","J",8],["G","J",6],["H","K",6],["H","J",5],["I","L",3],["J","L",2],["K","L",9],["A","E",17],["D","J",18],["A","H",13],["G","L",15]],"ini":"A","fim":"L","otimo":20}];
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg=document.getElementById('svg'), palco=document.getElementById('palco'),
+      missaoEl=document.getElementById('missao'), medEl=document.getElementById('medida'),
+      trilhaEl=document.getElementById('trilha'), avisoEl=document.getElementById('aviso'),
+      festa=document.getElementById('festa'), nivelC=document.getElementById('nivelC'),
+      pontosC=document.getElementById('pontosC');
+
+  var PMAX = 10;
+  var idx=0, mapa=null, caminho=[], custo=0, tentativas=0, nomeAluno='';
+  var placar=[], W=900, H=520;
+  for (var i=0;i<MAPAS.length;i++) placar.push(null);
+
+  function viz(m,n){ var o=[],i,a;
+    for(i=0;i<m.ar.length;i++){ a=m.ar[i];
+      if(a[0]===n) o.push([a[1],a[2]]); if(a[1]===n) o.push([a[0],a[2]]); }
+    return o; }
+  function peso(m,u,v){ for(var i=0;i<m.ar.length;i++){ var a=m.ar[i];
+      if((a[0]===u&&a[1]===v)||(a[1]===u&&a[0]===v)) return a[2]; } return null; }
+  function el(t,at){ var e=document.createElementNS(NS,t);
+    for(var k in at) e.setAttribute(k,at[k]); return e; }
+
+  function desenhar(){
+    svg.innerHTML=''; svg.setAttribute('viewBox','0 0 '+W+' '+H);
+    var i,j,a,p1,p2;
+    for(i=0;i<mapa.ar.length;i++){
+      a=mapa.ar[i]; p1=mapa.nos[a[0]]; p2=mapa.nos[a[1]];
+      var usada=false;
+      for(j=0;j<caminho.length-1;j++)
+        if((caminho[j]===a[0]&&caminho[j+1]===a[1])||(caminho[j]===a[1]&&caminho[j+1]===a[0])) usada=true;
+      svg.appendChild(el('line',{x1:p1[0]*W/100,y1:p1[1]*H/100,x2:p2[0]*W/100,y2:p2[1]*H/100,
+        'class':'aresta'+(usada?' usada':'')}));
+    }
+    if(mapa.tipo==='custo'){
+      for(i=0;i<mapa.ar.length;i++){
+        a=mapa.ar[i]; p1=mapa.nos[a[0]]; p2=mapa.nos[a[1]];
+        var mx=(p1[0]+p2[0])/2*W/100, my=(p1[1]+p2[1])/2*H/100;
+        svg.appendChild(el('circle',{cx:mx,cy:my,r:21,'class':'pesobg'}));
+        var t=el('text',{x:mx,y:my,'class':'peso'}); t.textContent=a[2]; svg.appendChild(t);
+      }
+    }
+    var atual=caminho.length?caminho[caminho.length-1]:null;
+    var vz=atual?viz(mapa,atual).map(function(v){return v[0];}):[];
+    for(var nome in mapa.nos){
+      var p=mapa.nos[nome], cls='no';
+      if(nome===mapa.ini) cls+=' inicio';
+      if(nome===mapa.fim) cls+=' fim';
+      if(caminho.indexOf(nome)>=0) cls+=' visitado';
+      if(nome===atual) cls+=' ativo';
+      if(atual&&vz.indexOf(nome)>=0&&caminho.indexOf(nome)<0) cls+=' vizinho';
+      var g=el('g',{'class':cls});
+      g.appendChild(el('circle',{cx:p[0]*W/100,cy:p[1]*H/100,r:44}));
+      var tx=el('text',{x:p[0]*W/100,y:p[1]*H/100+12}); tx.textContent=nome; g.appendChild(tx);
+      (function(n){ g.addEventListener('click',function(){ clicar(n); }); })(nome);
+      svg.appendChild(g);
+    }
+  }
+
+  function aviso(t){ avisoEl.textContent=t; avisoEl.style.display='block';
+    clearTimeout(avisoEl._t); avisoEl._t=setTimeout(function(){avisoEl.style.display='none';},2000); }
+
+  function total(){ var s=0; for(var i=0;i<placar.length;i++) if(placar[i]!==null) s+=placar[i]; return s; }
+
+  function painel(){
+    medEl.textContent = (mapa.tipo==='custo') ? 'distância: '+custo
+                                              : 'paradas: '+Math.max(0,caminho.length-1);
+    trilhaEl.textContent = caminho.length ? caminho.join(' \u2192 ') : '\u2014';
+    nivelC.textContent = 'Nível '+(idx+1)+' de '+MAPAS.length;
+    pontosC.textContent = total()+' pontos';
+  }
+
+  function clicar(n){
+    if(festa.style.display==='flex') return;
+    if(!caminho.length){
+      if(n!==mapa.ini){ aviso('Comece pelo '+mapa.ini+'!'); return; }
+      caminho=[n]; custo=0; desenhar(); painel(); return;
+    }
+    var at=caminho[caminho.length-1];
+    if(n===at) return;
+    if(caminho.length>1 && n===caminho[caminho.length-2]){ voltar(); return; }
+    var w=peso(mapa,at,n);
+    if(w===null){ aviso('Não existe caminho de '+at+' até '+n+'!'); return; }
+    if(caminho.indexOf(n)>=0){ aviso('Você já passou por '+n+'.'); return; }
+    caminho.push(n); custo+=w; desenhar(); painel();
+    if(n===mapa.fim) terminar();
+  }
+  function voltar(){
+    if(caminho.length<2){ caminho=[]; custo=0; }
+    else { var u=caminho.pop(); custo-=peso(mapa,caminho[caminho.length-1],u); }
+    desenhar(); painel();
+  }
+
+  function terminar(){
+    tentativas++;
+    var meu=(mapa.tipo==='custo')?custo:caminho.length-1, ot=mapa.otimo, pts;
+    if(meu<=ot)              pts=Math.max(6,PMAX-(tentativas-1));
+    else if(meu<=ot*1.25)    pts=5;
+    else if(meu<=ot*1.6)     pts=3;
+    else                     pts=2;
+    if(placar[idx]===null||pts>placar[idx]) placar[idx]=pts;
+    painel();
+
+    var perf=meu<=ot, ultimo=(idx===MAPAS.length-1), un=(mapa.tipo==='custo')?'':' paradas';
+    var html='<div class="tit">'+(perf?'\uD83C\uDFC6 MELHOR CAMINHO!':'\u2705 Você chegou!')+'</div>'+
+      '<div class="sub">Seu caminho: <b>'+caminho.join(' \u2192 ')+'</b><br>'+
+      (mapa.tipo==='custo'?'Distância':'Paradas')+': <b>'+meu+'</b>'+
+      (perf?'<br><br>Não dá para fazer melhor!'
+           :'<br><br>Dá para chegar com <b>'+ot+un+'</b>. Tente melhorar!')+
+      '<br><br>Pontos deste nível: <b>'+placar[idx]+' de '+PMAX+'</b></div><div class="linha">';
+    if(!perf) html+='<button class="bt2" id="btMelhorar">TENTAR MELHORAR</button>';
+    html+='<button class="bt1" id="btSeguir">'+(ultimo?'VER MEU RESULTADO':'PRÓXIMO NÍVEL \u2192')+'</button></div>';
+    festa.innerHTML=html; festa.style.display='flex';
+    if(!perf) document.getElementById('btMelhorar').onclick=function(){ iniciar(idx,true); };
+    document.getElementById('btSeguir').onclick=function(){
+      if(ultimo) resultado(); else iniciar(idx+1,false); };
+  }
+
+  function resultado(){
+    var tot=total(), max=MAPAS.length*PMAX, nota=Math.round(tot/max*100)/10;
+    function linha(a,b){ var s='';
+      for(var i=a;i<b;i++) s+='<td>'+(placar[i]===null?0:placar[i])+'</td>';
+      return s; }
+    festa.innerHTML =
+      '<div class="tit">\uD83C\uDF89 VOCÊ TERMINOU!</div>'+
+      '<div class="sub">Escreva o seu nome completo:</div>'+
+      '<input id="nome" placeholder="digite o seu nome" value="'+nomeAluno+'">'+
+      '<div class="caixa"><div class="sub"><b>'+tot+'</b> pontos de '+max+'</div>'+
+      '<div class="nota">'+nota.toFixed(1)+'</div></div>'+
+      '<table class="res">'+
+        '<tr><th>nível</th>'+[1,2,3,4,5,6,7,8,9,10].map(function(v){return '<th>'+v+'</th>';}).join('')+'</tr>'+
+        '<tr><th>pontos</th>'+linha(0,10)+'</tr>'+
+        '<tr><th>nível</th>'+[11,12,13,14,15,16,17,18,19,20].map(function(v){return '<th>'+v+'</th>';}).join('')+'</tr>'+
+        '<tr><th>pontos</th>'+linha(10,20)+'</tr></table>'+
+      '<div class="sub" style="font-size:18px">Chame o professor para registrar a nota.</div>'+
+      '<div class="linha"><button class="bt2" id="btNovo">COMEÇAR TUDO DE NOVO</button></div>';
+    festa.style.display='flex';
+    var inp=document.getElementById('nome');
+    inp.oninput=function(){ nomeAluno=inp.value; };
+    document.getElementById('btNovo').onclick=function(){
+      for(var k=0;k<placar.length;k++) placar[k]=null;
+      nomeAluno=''; iniciar(0,false); };
+  }
+
+  function iniciar(i,mesmo){
+    idx=i; mapa=MAPAS[i];
+    if(!mesmo) tentativas=0;
+    caminho=[]; custo=0;
+    festa.style.display='none'; avisoEl.style.display='none';
+    W=Math.max(620,palco.clientWidth); H=Math.max(380,palco.clientHeight);
+    missaoEl.innerHTML=(mapa.tipo==='custo')
+      ? 'Vá de <b>'+mapa.ini+'</b> até <b>'+mapa.fim+'</b> pela MENOR distância.'
+      : 'Vá de <b>'+mapa.ini+'</b> até <b>'+mapa.fim+'</b> com MENOS paradas.';
+    desenhar(); painel();
+  }
+
+  document.getElementById('btVoltar').onclick=voltar;
+  document.getElementById('btLimpar').onclick=function(){ iniciar(idx,true); };
+  window.addEventListener('resize',function(){
+    W=Math.max(620,palco.clientWidth); H=Math.max(380,palco.clientHeight); desenhar(); });
+  iniciar(0,false);
+})();
+</script>
+</body>
+</html>
